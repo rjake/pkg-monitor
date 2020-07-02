@@ -1,3 +1,4 @@
-﻿package,color,link
-shinyobjects,mutedviolet3,https://rjake.github.io/shinyobjects/
-simplecolors,mutedteal3,https://rjake.github.io/simplecolors/
+﻿package,color,description,link,png
+shinyobjects,mutedviolet3,Troubleshooting reactive data in 'shiny' can be difficult. These functions will convert reactive data frames into functions and load all assigned objects.,https://rjake.github.io/shinyobjects/,https://github.com/rjake/shinyobjects/blob/master/pkgdown/favicon/apple-touch-icon-76x76.png
+simplecolors,mutedteal3,"A curated set of colors that are called using
+    a standardized syntax: saturation + hue + lightness. For example, ""brightblue4"" and ""mutedred2"". Functions exists to return individual colors by name or to build palettes across or within hues. Most functions allow you to visualize the palettes in addition to returning the desired hex codes.",https://rjake.github.io/simplecolors/,https://github.com/rjake/simplecolors/blob/master/pkgdown/favicon/apple-touch-icon-76x76.png
