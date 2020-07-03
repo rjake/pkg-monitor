@@ -29,8 +29,8 @@ input <- list(
   x = "Inception",
   y = "Cummulative",
   n = c(0, 90),
-  period = "Month",
-  geom = "Smooth"
+  period = "month",
+  full_period = "y"
 )
 ```
 
@@ -41,6 +41,8 @@ library(tidyverse)
 library(lubridate)
 library(simplecolors)
 library(glue)
+library(DT)
+library(plotly)
 library(cranlogs)
 
 pkgs <- read_csv(
@@ -107,9 +109,22 @@ radioGroupButtons(
 radioGroupButtons(
   inputId = "period",
   label = "Roll-Up:",
-  choices = c("Day", "Week", "Month"),
-  selected = "Week"
-)
+  choices = c("day", "week", "month"),
+  selected = "week"
+) 
+```
+
+```{r input_full_period}
+renderUI({
+  if (input$period != "day"){
+    radioGroupButtons(
+      inputId = "full_period",
+      label = paste0("Only show completed ", input$period, "s?"),
+      choices = c("yes", "show all"),
+      selected = "yes"
+    )
+  }
+})
 ```
 
 ```{r input_x}
@@ -161,17 +176,26 @@ fluidRow(
 )
 ```
 
-
-Column
------------------------------------------------------------------------
-### 
-```{r plot}
-renderPlot({
-  # base data ----
+```{r df}
+df <- reactive({
+  if (
+    input$period == "day"
+    | input$full_period == "show all"
+    | max(logs$date) == max(ceiling_date(logs$date, input$period))
+  ) {
+    max_date <- max(logs$date)
+  } else {
+    max_date <- floor_date(max(logs$date), input$period) - 1
+  }
+  
+  
   df <-
     logs %>%
-    filter(package %in% input$pkg) %>%
-    mutate(date = floor_date(date, tolower(input$period))) %>% 
+    filter(
+      date <= max_date,
+      package %in% input$pkg
+    ) %>%
+    mutate(date = floor_date(date, input$period)) %>% 
     count(package, date, wt = count, name = "count") %>%
     group_by(package) %>% 
     mutate(
@@ -194,10 +218,19 @@ renderPlot({
       mutate(x = date) %>% 
       filter(between(from_today, min(input$n), max(input$n)))
   }
-  
+  df
+})
+```
+
+
+Column {.tabset}
+-----------------------------------------------------------------------
+### Plot
+```{r plot}
+renderPlotly({
   # title ----
   pkg_deets <-
-    df %>% 
+    df() %>% 
     group_by(package) %>% 
     summarise(
       #min_date = format(min(date), format = "%m-%d-%Y"),
@@ -219,24 +252,16 @@ renderPlot({
   date_range <-
     paste(
       str_replace(
-        format(range(df$date), format = "%b %e, %Y"),
+        format(range(df()$date), format = "%b %e, %Y"),
         "  ", 
         " "
       ),
       collapse = " to "
     )
-
-  
-  # use geom ----
-  # if (input$geom == "Smooth") {
-  #   use_geom <- function(...) geom_smooth(se = FALSE, ...)
-  # } else {
-  #   use_geom <- geom_line
-  # }
   
   # plot ----
   p <-    
-    ggplot(df, aes(x, y, color = package)) +
+    ggplot(df(), aes(x, y, color = package)) +
       geom_line() +
       scale_color_manual(values = pkg_colors) +
       ylim(0, NA) +
@@ -252,11 +277,39 @@ renderPlot({
         y = input$y
       )
   
-  if (input$period != "Day") {
+  if (input$period != "day") {
     p <- p + geom_point()
   }
   
-  p
+  ggplotly(p) %>% 
+    layout(hovermode = "x unified")
+})
+```
+
+### Table
+```{r}
+renderDT({
+  df() %>%
+    select(-c(from_start:x)) %>%
+    mutate(package = as.factor(package)) %>% 
+    arrange(desc(date)) %>%
+    datatable(
+      extensions = c("FixedHeader", "Scroller"),
+      filter = "top",
+      rownames = FALSE,
+      escape = FALSE,
+      options =
+        list(
+          dom = "Bfrtip",
+          deferRender = FALSE,
+          scrollY = 540,
+          scroller = TRUE,
+          scrollX = TRUE,
+          fixedHeader = FALSE,
+          pageLength = nrow(df()),
+          lengthChange = FALSE
+        )
+    )
 })
 ```
 
