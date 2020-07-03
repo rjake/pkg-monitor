@@ -1,0 +1,263 @@
+---
+title: "Package Release"
+# Repo here: https://github.com/rjake/pkg_monitor
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    source_code: embed
+    theme: lumen
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{css css_style}
+.body {
+  font-size: 10;
+  line-height: 1;
+}
+
+.btn {
+  padding: 4px 10px 4px;
+  font-size: 10px;
+}
+```
+
+
+```{r dummy_inputs, eval=FALSE}
+input <- list(
+  pkg = "simplecolors",
+  x = "Inception",
+  y = "Cummulative",
+  n = c(0, 90),
+  period = "Month",
+  geom = "Smooth"
+)
+```
+
+```{r setup, include=FALSE}
+library(shiny)
+library(shinyWidgets)
+library(tidyverse)
+library(lubridate)
+library(simplecolors)
+library(glue)
+library(cranlogs)
+
+pkgs <- read_csv(
+  "https://raw.githubusercontent.com/rjake/pkg_monitor/master/data/pkg_data.csv"
+)
+
+pkg_colors <- 
+  setNames(
+    object = sc(pkgs$color), 
+    nm = pkgs$package
+  )
+
+
+raw_logs <-
+  cranlogs::cran_downloads(
+    packages = pkgs$package,
+    from = "2020-01-31"
+  ) 
+
+logs <- 
+  raw_logs %>%
+  group_by(package) %>% 
+  filter( # the day before the first non-zero value
+    count > 0 
+    | date == min(ifelse(count > 0, date - 1, today()))
+  ) %>% 
+  ungroup()
+
+max_30_day <- function(x) {
+  ceiling(x / 30) * 30
+}
+```
+
+Sidebar {.sidebar data-width=275}
+-----------------------------------------------------------------------
+
+```{r input_pkg}
+checkboxGroupButtons(
+  inputId = "pkg",
+  "Package:",
+  choices = pkgs$package,
+  selected = pkgs$package,
+)
+```
+
+```{r input_y}
+radioGroupButtons(
+  inputId = "y",
+  "Display:",
+  choices = c("Count", "Cummulative")
+)
+```
+
+```{r input_geom, eval=FALSE}
+radioGroupButtons(
+  inputId = "geom",
+  label = "Line Type",
+  choices = c("Line", "Smooth")
+)
+```
+
+
+```{r input_period}
+radioGroupButtons(
+  inputId = "period",
+  label = "Roll-Up:",
+  choices = c("Day", "Week", "Month"),
+  selected = "Week"
+)
+```
+
+```{r input_x}
+radioGroupButtons(
+  inputId = "x",
+  "Distance From:",
+  choices = c("Today", "Inception")
+)
+```
+
+```{r input_n}
+renderUI({
+  n_days <- max_30_day(as.integer(max(logs$date) - min(logs$date)))
+  
+  label <- 
+    ifelse(
+      input$x == "Inception",
+      "Days from Start:",
+      "Last # of Days:"
+    )
+    
+    sliderInput(
+      inputId = "n",
+      label = label,
+      min = 0,
+      max = n_days,
+      step = 10,
+      value = c(0, 60)
+    )
+})
+```
+
+##### About 
+```{r hex_stickers}
+add_image <- function(i) {
+  tags$a(
+    href = pkgs$link[i],
+    tags$img(
+      src = pkgs$png[i],
+      title = pkgs$description[i],
+      width =  "70",
+      height = "70"
+    )
+  )
+}
+
+fluidRow(
+  column(6, add_image(1)),
+  column(6, add_image(2))
+)
+```
+
+
+Column
+-----------------------------------------------------------------------
+### 
+```{r plot}
+renderPlot({
+  # base data ----
+  df <-
+    logs %>%
+    filter(package %in% input$pkg) %>%
+    mutate(date = floor_date(date, tolower(input$period))) %>% 
+    count(package, date, wt = count, name = "count") %>%
+    group_by(package) %>% 
+    mutate(
+      cummulative = cumsum(count),
+      from_start = as.integer(date - min(date)),
+      from_today = as.integer(today() - date) 
+    ) %>% 
+    ungroup() %>% 
+    mutate(y = get(tolower(input$y)))
+  
+  # last n days, days from start----
+  if (input$x == "Inception") {
+    df <-
+      df %>% 
+      mutate(x = from_start) %>% 
+      filter(between(x, min(input$n), max(input$n)))
+  } else {
+    df <-
+      df %>% 
+      mutate(x = date) %>% 
+      filter(between(from_today, min(input$n), max(input$n)))
+  }
+  
+  # title ----
+  pkg_deets <-
+    df %>% 
+    group_by(package) %>% 
+    summarise(
+      #min_date = format(min(date), format = "%m-%d-%Y"),
+      min_n = ifelse(min(from_start) == 0, 0, min(cummulative)),
+      max_n = max(cummulative),
+      delta = max_n - min_n
+    ) %>% 
+    ungroup() %>% 
+    arrange(desc(max_n)) %>% 
+    mutate(
+      sentence = glue(
+        "{package} +{delta} ({min_n} to {max_n})"
+      )
+    ) %>% 
+    pull(sentence) %>% 
+    glue_collapse("\n")
+  
+  # subtitle ----
+  date_range <-
+    paste(
+      str_replace(
+        format(range(df$date), format = "%b %e, %Y"),
+        "  ", 
+        " "
+      ),
+      collapse = " to "
+    )
+
+  
+  # use geom ----
+  # if (input$geom == "Smooth") {
+  #   use_geom <- function(...) geom_smooth(se = FALSE, ...)
+  # } else {
+  #   use_geom <- geom_line
+  # }
+  
+  # plot ----
+  p <-    
+    ggplot(df, aes(x, y, color = package)) +
+      geom_line() +
+      scale_color_manual(values = pkg_colors) +
+      ylim(0, NA) +
+      theme_minimal() +
+      theme(
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank()
+      ) +
+      labs(
+        title = pkg_deets,
+        subtitle = date_range,
+        x = paste("Distance from", input$x),
+        y = input$y
+      )
+  
+  if (input$period != "Day") {
+    p <- p + geom_point()
+  }
+  
+  p
+})
+```
+

@@ -1,0 +1,12 @@
+name: package-monitor
+title: package-monitor
+username:
+account: rjake
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2531543
+bundleId: 3346359
+url: https://rjake.shinyapps.io/package-monitor/
+when: 1593741430.27937
+asMultiple: FALSE
+asStatic: FALSE
