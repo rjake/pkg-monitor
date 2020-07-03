@@ -136,7 +136,6 @@ renderUI({
       label = label,
       min = 0,
       max = n_days,
-      step = 10,
       value = c(0, 60)
     )
 })
