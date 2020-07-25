@@ -14,11 +14,34 @@ runtime: shiny
 .body {
   font-size: 10;
   line-height: 1;
+  padding-top: 30px;
 }
 
 .btn {
   padding: 4px 10px 4px;
   font-size: 10px;
+}
+
+.navbar-nav > li > a, .navbar-brand {
+  padding-top: 4px !important; 
+  padding-bottom: 0 !important;
+  height: 25px;
+}
+
+.navbar {
+  min-height:25px !important;
+}
+
+.section.sidebar {
+  top: 30px;
+}
+
+.form-group {
+  margin-top: 10px;
+}
+
+label {
+  margin-bottom: 0px;
 }
 ```
 
@@ -79,7 +102,7 @@ Sidebar {.sidebar data-width=275}
 ```{r input_pkg}
 checkboxGroupButtons(
   inputId = "pkg",
-  "Package:",
+  label = NULL,
   choices = pkgs$package,
   selected = pkgs$package,
 )
@@ -88,7 +111,7 @@ checkboxGroupButtons(
 ```{r input_y}
 radioGroupButtons(
   inputId = "y",
-  "Display:",
+  label = NULL,
   choices = c("Count", "Cummulative")
 )
 ```
@@ -105,23 +128,19 @@ radioGroupButtons(
 ```{r input_period}
 radioGroupButtons(
   inputId = "period",
-  label = "Roll-Up:",
+  label = NULL,
   choices = c("day", "week", "month"),
   selected = "week"
 ) 
 ```
 
 ```{r input_full_period}
-renderUI({
-  if (input$period != "day"){
-    radioGroupButtons(
-      inputId = "full_period",
-      label = paste0("Only show completed ", input$period, "s?"),
-      choices = c("yes", "show all"),
-      selected = "show all"
-    )
-  }
-})
+radioGroupButtons(
+  inputId = "full_period",
+  label = NULL,
+  choices = c("completed", "all"),
+  selected = "all"
+)
 ```
 
 ```{r input_x}
@@ -158,9 +177,10 @@ add_image <- function(i) {
   )
 }
 
-fluidRow(
-  column(6, add_image(1)),
-  column(6, add_image(2))
+splitLayout(
+  style = "height: 50px;",
+  add_image(1),
+  add_image(2)
 )
 ```
 
