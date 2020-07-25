@@ -188,7 +188,7 @@ splitLayout(
 df <- reactive({
   if (
     input$period == "day"
-    | input$full_period == "show all"
+    | input$full_period == "all"
     | max(logs$date) == max(ceiling_date(logs$date, input$period))
   ) {
     max_date <- max(logs$date)
