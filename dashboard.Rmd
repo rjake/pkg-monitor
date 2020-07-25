@@ -65,10 +65,7 @@ raw_logs <-
 logs <- 
   raw_logs %>%
   group_by(package) %>% 
-  filter( # the day before the first non-zero value
-    count > 0 
-    | date == min(ifelse(count > 0, date - 1, today()))
-  ) %>% 
+  filter(count > 0) %>% 
   ungroup()
 
 max_30_day <- function(x) {
@@ -121,7 +118,7 @@ renderUI({
       inputId = "full_period",
       label = paste0("Only show completed ", input$period, "s?"),
       choices = c("yes", "show all"),
-      selected = "yes"
+      selected = "show all"
     )
   }
 })
@@ -136,24 +133,15 @@ radioGroupButtons(
 ```
 
 ```{r input_n}
-renderUI({
-  n_days <- max_30_day(as.integer(max(logs$date) - min(logs$date)))
-  
-  label <- 
-    ifelse(
-      input$x == "Inception",
-      "Days from Start:",
-      "Last # of Days:"
-    )
+n_days <- max_30_day(as.integer(max(logs$date) - min(logs$date)))
     
-    sliderInput(
-      inputId = "n",
-      label = label,
-      min = 0,
-      max = n_days,
-      value = c(0, 60)
-    )
-})
+sliderInput(
+  inputId = "n",
+  label = "# Days",
+  min = 0,
+  max = n_days,
+  value = c(0, 60)
+)
 ```
 
 ##### About 
