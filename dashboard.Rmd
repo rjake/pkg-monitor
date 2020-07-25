@@ -14,7 +14,7 @@ runtime: shiny
 .body {
   font-size: 10;
   line-height: 1;
-  padding-top: 30px;
+  padding-top: 30px !important;
 }
 
 .btn {
@@ -22,6 +22,16 @@ runtime: shiny
   font-size: 10px;
 }
 
+.form-group {
+  margin-top: 10px;
+}
+
+label {
+  margin-bottom: 0px;
+}
+```
+
+```{css eval=FALSE}
 .navbar-nav > li > a, .navbar-brand {
   padding-top: 4px !important; 
   padding-bottom: 0 !important;
@@ -36,24 +46,17 @@ runtime: shiny
   top: 30px;
 }
 
-.form-group {
-  margin-top: 10px;
-}
-
-label {
-  margin-bottom: 0px;
-}
 ```
 
 
-```{r dummy_inputs, eval=FALSE}
+```{r dummy_input, eval=FALSE}
 input <- list(
-  pkg = "simplecolors",
-  x = "Inception",
+  pkg = c("simplecolors", "shinyobjects"),
+  x = "Today",
   y = "Cummulative",
   n = c(0, 90),
   period = "month",
-  full_period = "y"
+  full_period = "all"
 )
 ```
 
@@ -93,6 +96,18 @@ logs <-
 
 max_30_day <- function(x) {
   ceiling(x / 30) * 30
+}
+
+show_trend <- function(df) {
+  count_ts <- ts(df$count, frequency = 7)
+  stl <- tryCatch(
+    as.data.frame(stl(count_ts, "periodic")$time.series),
+    error = function(e) data.frame(trend = df$count, remainder = 0)
+  )
+
+  df$trend <- stl$trend
+  df$remainder <- stl$remainder
+  df
 }
 ```
 
@@ -184,8 +199,8 @@ splitLayout(
 )
 ```
 
-```{r df}
-df <- reactive({
+```{r df_reactive}
+df_reactive <- reactive({
   if (
     input$period == "day"
     | input$full_period == "all"
@@ -197,8 +212,7 @@ df <- reactive({
   }
   
   
-  df <-
-    logs %>%
+  logs %>%
     filter(
       date <= max_date,
       package %in% input$pkg
@@ -213,20 +227,6 @@ df <- reactive({
     ) %>% 
     ungroup() %>% 
     mutate(y = get(tolower(input$y)))
-  
-  # last n days, days from start----
-  if (input$x == "Inception") {
-    df <-
-      df %>% 
-      mutate(x = from_start) %>% 
-      filter(between(x, min(input$n), max(input$n)))
-  } else {
-    df <-
-      df %>% 
-      mutate(x = date) %>% 
-      filter(between(from_today, min(input$n), max(input$n)))
-  }
-  df
 })
 ```
 
@@ -235,10 +235,30 @@ Column {.tabset}
 -----------------------------------------------------------------------
 ### Plot
 ```{r plot}
+# plot_data----
+plot_data <- reactive({
+  if (input$x == "Inception") {
+    df <-
+      df_reactive() %>% 
+      mutate(x = from_start) %>% 
+      filter(between(x, min(input$n), max(input$n)))
+  } else {
+    df <-
+      df_reactive() %>% 
+      mutate(x = date) %>% 
+      filter(between(from_today, min(input$n), max(input$n)))
+  }
+
+  df %>% 
+    group_by(package) %>% 
+    group_modify(~show_trend(.))
+})
+
+
 renderPlotly({
   # title ----
   pkg_deets <-
-    df() %>% 
+    df_reactive() %>% 
     group_by(package) %>% 
     summarise(
       #min_date = format(min(date), format = "%m-%d-%Y"),
@@ -258,25 +278,19 @@ renderPlotly({
   
   # subtitle ----
   date_range <-
-    paste(
-      str_replace(
-        format(range(df()$date), format = "%b %e, %Y"),
-        "  ", 
-        " "
-      ),
-      collapse = " to "
-    )
+    range(df_reactive()$date) %>% 
+    format(format = "%b %e, %Y") %>%
+    str_replace("  ", " ") %>% 
+    paste(collapse = " to ")
   
   # plot ----
-  p <-    
-    ggplot(df(), aes(x, y, color = package)) +
-      geom_line() +
+  p <-
+    ggplot(plot_data(), aes(x, y, color = package)) +
       scale_color_manual(values = pkg_colors) +
       ylim(0, NA) +
       theme_minimal() +
       theme(
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor = element_blank()
+        panel.grid = element_blank()
       ) +
       labs(
         title = pkg_deets,
@@ -284,9 +298,21 @@ renderPlotly({
         x = paste("Distance from", input$x),
         y = input$y
       )
-  
-  if (input$period != "day") {
-    p <- p + geom_point()
+  #print(input$period)
+  if (input$period == "day") {
+    p <- 
+      p + 
+      geom_linerange(
+        aes(ymin = trend, ymax = trend + remainder), 
+        alpha = 0.5
+      ) +
+      geom_point(aes(y = trend + remainder), alpha = 0.5, size = 0.8) +
+      geom_line(aes(y = trend), size = 1)
+  } else {
+    p <- 
+      p + 
+      geom_line() +
+      geom_point()
   }
   
   ggplotly(p) %>% 
@@ -297,9 +323,10 @@ renderPlotly({
 ### Table
 ```{r}
 renderDT({
-  df() %>%
-    select(-c(from_start:x)) %>%
-    mutate(package = as.factor(package)) %>% 
+  df_reactive() %>%
+    select(-c(cummulative:y)) %>%
+    #mutate(package = as.factor(package)) %>%
+    spread(package, count) %>% 
     arrange(desc(date)) %>%
     datatable(
       extensions = c("FixedHeader", "Scroller"),
@@ -314,7 +341,7 @@ renderDT({
           scroller = TRUE,
           scrollX = TRUE,
           fixedHeader = FALSE,
-          pageLength = nrow(df()),
+          pageLength = nrow(df_reactive()),
           lengthChange = FALSE
         )
     )
