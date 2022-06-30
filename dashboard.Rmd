@@ -79,8 +79,12 @@ pkgs <- read_csv(
 ) |> 
   mutate(
     link = glue("https://rjake.github.io/{package}"),
-    png = glue("{link}/reference/figures/logo.png")
-  )
+    png = glue(
+      "https://raw.githubusercontent.com/rjake/{package}\\
+      /main/pkgdown/favicon/apple-touch-icon-120x120.png"
+    )
+  ) |> 
+  arrange(package)
 
 pkg_colors <- 
   setNames(
@@ -198,7 +202,7 @@ add_image <- function(i) {
     tags$img(
       src = pkgs$png[i],
       title = pkgs$description[i],
-      height = "80.82",
+      height = "70",
       width =  "70"
     )
   )
@@ -286,14 +290,14 @@ renderPlotly({
         str_remove("\\.0$")
     ) %>% 
     ungroup() %>% 
-    arrange(desc(max_n)) %>% 
+    arrange(package) %>% 
     mutate(
       sentence = glue(
         "{package} ({max_n})"
       )
     ) %>% 
     pull(sentence) %>% 
-    glue_collapse("\n") #|> print()
+    glue_collapse(" - ") #|> print()
   
   # subtitle ----
   date_range <-
@@ -318,7 +322,7 @@ renderPlotly({
         y = input$y
       )
   #print(input$period)
-  if (input$period == "day") {
+  if (input$period == "day" && input$y == "Count") {
     p <- 
       p + 
       geom_linerange(
