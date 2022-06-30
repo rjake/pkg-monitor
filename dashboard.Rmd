@@ -49,15 +49,17 @@ label {
 ```
 
 
-```{r dummy_input, eval=FALSE}
+```{r dummy_input, eval=interactive()}
 input <- list(
-  pkg = c("simplecolors", "shinyobjects"),
+  pkg = c("simplecolors", "shinyobjects", "headliner"),
   x = "Today",
   y = "Cummulative",
   n = c(0, 90),
   period = "month",
   full_period = "all"
 )
+
+shiny::reactiveConsole(TRUE)
 ```
 
 ```{r setup, include=FALSE}
@@ -72,6 +74,7 @@ library(plotly)
 library(cranlogs)
 
 pkgs <- read_csv(
+  #"data/pkg_data.csv"
   "https://raw.githubusercontent.com/rjake/pkg_monitor/master/data/pkg_data.csv"
 ) |> 
   mutate(
@@ -195,8 +198,8 @@ add_image <- function(i) {
     tags$img(
       src = pkgs$png[i],
       title = pkgs$description[i],
-      width =  "70",
-      height = "70"
+      height = "80.82",
+      width =  "70"
     )
   )
 }
@@ -204,7 +207,8 @@ add_image <- function(i) {
 splitLayout(
   style = "height: 50px;",
   add_image(1),
-  add_image(2)
+  add_image(2),
+  add_image(3)
 )
 ```
 
@@ -271,19 +275,25 @@ renderPlotly({
     group_by(package) %>% 
     summarise(
       #min_date = format(min(date), format = "%m-%d-%Y"),
-      min_n = ifelse(min(from_start) == 0, 0, min(cummulative)),
-      max_n = max(cummulative),
-      delta = max_n - min_n
+      #min_n = ifelse(min(from_start) == 0, 0, min(cummulative)),
+      #delta = max_n - min_n,
+      max_n = 
+        max(cummulative) |> 
+        scales::number(
+          accuracy = 0.1,
+          scale_cut = scales::cut_long_scale()
+        ) |> 
+        str_remove("\\.0$")
     ) %>% 
     ungroup() %>% 
     arrange(desc(max_n)) %>% 
     mutate(
       sentence = glue(
-        "{package} +{delta} ({min_n} to {max_n})"
+        "{package} ({max_n})"
       )
     ) %>% 
     pull(sentence) %>% 
-    glue_collapse("\n")
+    glue_collapse("\n") #|> print()
   
   # subtitle ----
   date_range <-
@@ -325,7 +335,10 @@ renderPlotly({
   }
   
   ggplotly(p) %>% 
-    layout(hovermode = "x unified")
+    layout(
+      hovermode = "x unified",
+      showLegend = TRUE
+    )
 })
 ```
 
