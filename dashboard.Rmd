@@ -73,7 +73,11 @@ library(cranlogs)
 
 pkgs <- read_csv(
   "https://raw.githubusercontent.com/rjake/pkg_monitor/master/data/pkg_data.csv"
-)
+) |> 
+  mutate(
+    link = glue("https://rjake.github.io/{package}"),
+    png = glue("{link}/reference/figures/logo.png")
+  )
 
 pkg_colors <- 
   setNames(

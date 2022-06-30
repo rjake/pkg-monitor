@@ -1,4 +1,5 @@
-package,color,description,link,png
-shinyobjects,mutedviolet3,Troubleshooting reactive data in 'shiny' can be difficult. These functions will convert reactive data frames into functions and load all assigned objects.,https://rjake.github.io/shinyobjects/,https://github.com/rjake/shinyobjects/blob/master/pkgdown/favicon/apple-touch-icon-120x120.png?raw=true
-simplecolors,mutedteal3,"A curated set of colors that are called using
-    a standardized syntax: saturation + hue + lightness. For example, ""brightblue4"" and ""mutedred2"". Functions exists to return individual colors by name or to build palettes across or within hues. Most functions allow you to visualize the palettes in addition to returning the desired hex codes.",https://rjake.github.io/simplecolors/,https://github.com/rjake/simplecolors/blob/master/pkgdown/favicon/apple-touch-icon-120x120.png?raw=true
+package,color,released,description
+shinyobjects,mutedviolet3,2020-05-12,Troubleshooting reactive data in 'shiny' can be difficult. These functions will convert reactive data frames into functions and load all assigned objects.
+simplecolors,mutedteal3,"	
+2020-02-01","A curated set of colors that are called using  a standardized syntax: saturation + hue + lightness. For example, ""brightblue4"" and ""mutedred2"". Functions exists to return individual colors by name or to build palettes across or within hues. Most functions allow you to visualize the palettes in addition to returning the desired hex codes."
+headliner,orange3,2022-06-02,Easily compose sentences about changes in data using 'glue' syntax.
