@@ -5,8 +5,9 @@ account: rjake
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2531543
-bundleId: 3433479
+bundleId: 6056671
 url: https://rjake.shinyapps.io/package-monitor/
-when: 1595642729.20347
+when: 1656562423.2046
+lastSyncTime: 1656562423.20461
 asMultiple: FALSE
 asStatic: FALSE
